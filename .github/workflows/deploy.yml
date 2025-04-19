@@ -43,22 +43,26 @@ jobs:
           port: 22
           envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
           script: |
-            echo "Installing Java 21..."
+            echo "Installing Java 21 if not already installed..."
             sudo yum install java-21-amazon-corretto -y || true
 
-            echo "Killing any running Java processes..."
+            echo "Killing any existing Java processes..."
             pkill -f 'java -jar' || true
 
-            echo "Creating .env file for debug..."
-            echo "DB_URL=$DB_URL" > /home/ec2-user/your-app/app.env
-            echo "DB_USERNAME=$DB_USERNAME" >> /home/ec2-user/your-app/app.env
-            echo "DB_PASSWORD=$DB_PASSWORD" >> /home/ec2-user/your-app/app.env
-            echo "JWT_SECRET=$JWT_SECRET" >> /home/ec2-user/your-app/app.env
+            echo "Creating .env file with secrets..."
+            cat <<EOF > /home/ec2-user/your-app/app.env
+            DB_URL=$DB_URL
+            DB_USERNAME=$DB_USERNAME
+            DB_PASSWORD=$DB_PASSWORD
+            JWT_SECRET=$JWT_SECRET
+            EOF
 
-            echo "Running app with environment variables..."
+            echo "Starting application..."
             cd /home/ec2-user/your-app
-            nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
-            echo "App started. Logs at /home/ec2-user/your-app/app.log"
+            nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
+            echo "App started in background. Logs available at /home/ec2-user/your-app/app.log"
+
+            sleep 3
             exit 0
         env:
           DB_URL: ${{ secrets.DB_URL }}
