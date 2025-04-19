@@ -13,7 +13,6 @@ jobs:
     - name: Checkout source code
       uses: actions/checkout@v3
       id: checkout-code
-      # Adding debug step to show the files after checkout
       run: |
         echo "Listing files after checkout:"
         ls -al
@@ -26,13 +25,12 @@ jobs:
       id: setup-java
 
     - name: Build with Maven
-      run: mvn clean install -DskipTests
-      working-directory: Flight
-      id: build-maven
-      # Debug step to show files in the target folder
       run: |
+        mvn clean install -DskipTests
         echo "Listing files in target folder after Maven build:"
         ls -al target
+      working-directory: Flight
+      id: build-maven
 
     - name: Check if JAR is generated
       run: |
@@ -50,7 +48,6 @@ jobs:
         source: "target/Flight-0.0.1-SNAPSHOT.jar"
         target: "/home/ec2-user/your-app/"
       id: copy-jar
-      # Adding debug to verify the SCP action
       run: |
         echo "SCP action completed. Verifying the copied JAR on EC2..."
         ssh -i ${{ secrets.EC2_KEY }} ec2-user@${{ secrets.EC2_HOST }} "ls -al /home/ec2-user/your-app/"
@@ -70,7 +67,6 @@ jobs:
           # Running the app in the background
           nohup java -jar /home/ec2-user/your-app/Flight-0.0.1-SNAPSHOT.jar > /home/ec2-user/your-app/app.log 2>&1 &
       id: run-app
-      # Adding debug step to check if the app is running
       run: |
         echo "Checking if the Java process is running on EC2..."
         ssh -i ${{ secrets.EC2_KEY }} ec2-user@${{ secrets.EC2_HOST }} "ps aux | grep java"
