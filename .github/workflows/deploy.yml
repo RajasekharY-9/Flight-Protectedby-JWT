@@ -12,16 +12,33 @@ jobs:
     steps:
     - name: Checkout source code
       uses: actions/checkout@v3
+      id: checkout-code
+      # Adding debug step to show the files after checkout
+      run: |
+        echo "Listing files after checkout:"
+        ls -al
 
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '21'
+      id: setup-java
 
     - name: Build with Maven
       run: mvn clean install -DskipTests
       working-directory: Flight
+      id: build-maven
+      # Debug step to show files in the target folder
+      run: |
+        echo "Listing files in target folder after Maven build:"
+        ls -al target
+
+    - name: Check if JAR is generated
+      run: |
+        echo "Checking if the JAR file is generated:"
+        ls -al target/Flight-0.0.1-SNAPSHOT.jar
+      id: check-jar
 
     - name: Copy JAR to EC2
       uses: appleboy/scp-action@v0.1.6
@@ -32,6 +49,11 @@ jobs:
         port: 22
         source: "target/Flight-0.0.1-SNAPSHOT.jar"
         target: "/home/ec2-user/your-app/"
+      id: copy-jar
+      # Adding debug to verify the SCP action
+      run: |
+        echo "SCP action completed. Verifying the copied JAR on EC2..."
+        ssh -i ${{ secrets.EC2_KEY }} ec2-user@${{ secrets.EC2_HOST }} "ls -al /home/ec2-user/your-app/"
 
     - name: SSH and Run App
       uses: appleboy/ssh-action@v1.0.0
@@ -41,6 +63,14 @@ jobs:
         key: ${{ secrets.EC2_KEY }}
         port: 22
         script: |
+          # Installing JDK 21 on EC2 if not already installed
           sudo yum install java-21-amazon-corretto -y
+          # Kill any running instance of the app
           pkill -f 'java -jar' || true
-          nohup java -jar /home/ec2-user/your-app/your-app.jar > app.log 2>&1 &
+          # Running the app in the background
+          nohup java -jar /home/ec2-user/your-app/Flight-0.0.1-SNAPSHOT.jar > /home/ec2-user/your-app/app.log 2>&1 &
+      id: run-app
+      # Adding debug step to check if the app is running
+      run: |
+        echo "Checking if the Java process is running on EC2..."
+        ssh -i ${{ secrets.EC2_KEY }} ec2-user@${{ secrets.EC2_HOST }} "ps aux | grep java"
