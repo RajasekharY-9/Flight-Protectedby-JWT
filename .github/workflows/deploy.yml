@@ -46,6 +46,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           port: 22
+          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
           script: |
             echo "Installing Java 21 if not already installed..."
             sudo yum install java-21-amazon-corretto -y || true
