@@ -1,19 +1,32 @@
-  runs-on: ubuntu-latest
+name: Deploy Java App to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the source code from the repository
       - name: Checkout source code
         uses: actions/checkout@v3
 
+      # Step 2: Set up JDK 21 for the build
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
+      # Step 3: Build the application with Maven
       - name: Build with Maven
         run: mvn clean install -DskipTests
         working-directory: Flight
 
+      # Step 4: Copy the JAR file to the EC2 instance
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.6
         with:
@@ -25,6 +38,7 @@
           target: "/home/ec2-user/your-app/"
           overwrite: true
 
+      # Step 5: SSH into EC2 and run the app with environment variables
       - name: SSH and Run App on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -32,26 +46,26 @@
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           port: 22
-          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
           script: |
-            echo "Installing Java 21..."
+            echo "Installing Java 21 if not already installed..."
             sudo yum install java-21-amazon-corretto -y || true
 
-            echo "Killing any running Java processes..."
+            echo "Killing any existing Java processes..."
             pkill -f 'java -jar' || true
 
-            echo "Creating .env file for debug..."
-            echo "DB_URL=$DB_URL" > /home/ec2-user/your-app/app.env
-            echo "DB_USERNAME=$DB_USERNAME" >> /home/ec2-user/your-app/app.env
-            echo "DB_PASSWORD=$DB_PASSWORD" >> /home/ec2-user/your-app/app.env
-            echo "JWT_SECRET=$JWT_SECRET" >> /home/ec2-user/your-app/app.env
+            echo "Creating .env file from secrets..."
+            cat <<EOF > /home/ec2-user/your-app/app.env
+            DB_URL=jdbc:mysql://database-1.c1qo64om6frw.ap-south-1.rds.amazonaws.com:3306/flightdb?createDatabaseIfNotExist=true
+            DB_USERNAME=root
+            DB_PASSWORD=9398434528
+            JWT_SECRET=AZeBLi+QshUG5goEFFAMMcBmXq9fuIy4e8wrkpiGhQ8=
+            EOF
 
-            echo "Running app with environment variables..."
+            echo "Starting application..."
             cd /home/ec2-user/your-app
-            nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
-            echo "App started. Logs at /home/ec2-user/your-app/app.log"
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+            nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
+            echo "App started in background. Logs available at /home/ec2-user/your-app/app.log"
+
+            sleep 3  # Ensure the app is running in the background
+            tail -n 10 /home/ec2-user/your-app/app.log  # Display last 10 lines of the log to check the application status
+            exit 0
