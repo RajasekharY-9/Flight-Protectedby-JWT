@@ -72,9 +72,11 @@ public class FlightServiceImpl implements FlightService{
     }
 
     @Override
-    public FlightRequest updateFlight(FlightRequest req) throws FlightException {
-
-        Flight f=new Flight();
+    public FlightRequest updateFlight(String name,FlightRequest req) throws FlightException {
+        Flight f=   flightRepository.findByName(name);
+        if(f==null){
+            throw new FlightException("SERVICE_FLIGHT_NOT_EXIST");
+        }
         f.setSource(req.getSource());
         f.setDestination(req.getDestination());
         f.setName(req.getName());

@@ -11,7 +11,7 @@ public interface FlightService {
     public FlightRequest getFlightDetailsByName(String name) throws FlightException;
     public List<FlightRequest> getAllFlights() throws FlightException;
     public String deleteFlight(String name) throws FlightException;
-    public FlightRequest updateFlight(FlightRequest req)throws FlightException;
+    public FlightRequest updateFlight(String name,FlightRequest req)throws FlightException;
     //TODO
     //Implement Query based methods
     //Implement pagination and sorting

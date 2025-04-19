@@ -44,9 +44,9 @@ public class FlightController {
        String s= flightService.deleteFlight(name);
         return new ResponseEntity<>(s, HttpStatus.OK);
     }
-    @PutMapping("/update")
-    public ResponseEntity<FlightRequest> updateFlight(@RequestBody @Valid FlightRequest req)throws FlightException{
-        FlightRequest flightRequest = flightService.updateFlight(req);
+    @PutMapping("/update/{name}")
+    public ResponseEntity<FlightRequest> updateFlight(@PathVariable String name,@RequestBody @Valid FlightRequest req)throws FlightException{
+        FlightRequest flightRequest = flightService.updateFlight(name,req);
         return new ResponseEntity<>(flightRequest,HttpStatus.OK);
     }
 }
