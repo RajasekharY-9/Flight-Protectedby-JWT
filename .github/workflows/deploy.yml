@@ -26,14 +26,7 @@ jobs:
         run: mvn clean install -DskipTests
         working-directory: Flight
 
-      # Step 4: Upload the .env file as an artifact (if needed)
-      - name: Upload .env file as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: env-file
-          path: config/secrets.env  # Ensure the file path is correct
-
-      # Step 5: Copy JAR file to EC2 instance
+      # Step 4: Copy the JAR file to the EC2 instance
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.6
         with:
@@ -45,7 +38,7 @@ jobs:
           target: "/home/ec2-user/your-app/"
           overwrite: true
 
-      # Step 6: SSH into EC2 and run the app with environment variables
+      # Step 5: SSH into EC2 and run the app with environment variables from secrets.env
       - name: SSH and Run App on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -60,17 +53,21 @@ jobs:
             echo "Killing any existing Java processes..."
             pkill -f 'java -jar' || true
 
-            echo "Downloading and using the .env file..."
-            curl -o /home/ec2-user/your-app/secrets.env https://github.com/${{ github.repository }}/actions/artifacts/${{ steps.upload-artifact.outputs.artifact_id }}/env-file
+            echo "Creating .env file from config/secrets.env..."
+            # Read values from config/secrets.env and set them as environment variables
+            export $(cat /home/ec2-user/your-app/config/secrets.env | xargs)
 
-            echo "Creating .env file with secrets..."
-            cat /home/ec2-user/your-app/secrets.env | while IFS= read -r line; do
-                export $line
-            done
+            # Now create the .env file for the application
+            cat <<EOF > /home/ec2-user/your-app/app.env
+            DB_URL=${DB_URL}
+            DB_USERNAME=${DB_USERNAME}
+            DB_PASSWORD=${DB_PASSWORD}
+            JWT_SECRET=${JWT_SECRET}
+            EOF
 
             echo "Starting application..."
             cd /home/ec2-user/your-app
-            nohup env $(cat secrets.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
+            nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
             echo "App started in background. Logs available at /home/ec2-user/your-app/app.log"
 
             sleep 3  # Ensure the app is running in the background
