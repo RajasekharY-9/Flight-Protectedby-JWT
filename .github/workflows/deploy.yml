@@ -50,6 +50,11 @@ jobs:
           script: |
             echo "Installing Java 21 if not already installed..."
             sudo yum install java-21-amazon-corretto -y || true
+            export DB_URL=${{ secrets.DB_URL }}
+            export DB_USERNAME=${{ secrets.DB_USERNAME }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export JWT_SECRET=${{ secrets.JWT_SECRET }}
+
             cd /home/ec2-user/your-app/Flight/target
             java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
 
