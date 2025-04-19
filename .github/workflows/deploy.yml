@@ -1,4 +1,4 @@
-name: Deploy Java App to EC2
+name: Build and Deploy to EC2
 
 on:
   push:
@@ -7,54 +7,76 @@ on:
 
 jobs:
   deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
 
+    env:
+      DB_URL: ${{ secrets.DB_URL }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
-    - name: Build with Maven
-      run: mvn clean install -DskipTests
-      working-directory: Flight
+      - name: Build the app
+        run: |
+          ./mvnw clean package -DskipTests
 
-    - name: Copy JAR to EC2
-      uses: appleboy/scp-action@v0.1.6
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_KEY }}
-        port: 22
-        source: "Flight/target/Flight-0.0.1-SNAPSHOT.jar"
-        target: "/home/ec2-user/your-app/"
+      - name: Copy JAR to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          source: "target/Flight-0.0.1-SNAPSHOT.jar"
+          target: "/home/ec2-user/your-app"
 
-    - name: SSH and Run App
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_KEY }}
-        port: 22
-        envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
-        script: |
-          echo "Installing Java 21..."
-          sudo yum install java-21-amazon-corretto -y || true
+      - name: Deploy and Run App on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
+          envs: DB_URL,DB_USERNAME,DB_PASSWORD,JWT_SECRET
+          script: |
+            echo "Installing Java 21 (Amazon Corretto)..."
+            sudo yum install java-21-amazon-corretto -y || true
 
-          echo "Killing any running Java processes..."
-          pkill -f 'java -jar' || true
+            echo "Killing any existing Java app..."
+            pkill -f 'java -jar' || true
 
-          echo "Creating .env file for debug..."
-          echo "DB_URL=$DB_URL" > /home/ec2-user/your-app/app.env
-          echo "DB_USERNAME=$DB_USERNAME" >> /home/ec2-user/your-app/app.env
-          echo "DB_PASSWORD=$DB_PASSWORD" >> /home/ec2-user/your-app/app.env
-          echo "JWT_SECRET=$JWT_SECRET" >> /home/ec2-user/your-app/app.env
+            echo "Checking JAR presence..."
+            if [ ! -f /home/ec2-user/your-app/Flight-0.0.1-SNAPSHOT.jar ]; then
+              echo "JAR file not found!"
+              exit 1
+            fi
 
-          echo "Running app with environment variables..."
-          cd /home/ec2-user/your-app
-          nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
-          echo "App started. Logs at /home/ec2-user/your-app/app.log"
+            echo "Environment Variables Check:"
+            echo "DB_URL=$DB_URL"
+            echo "DB_USERNAME=$DB_USERNAME"
+            echo "DB_PASSWORD is set? [${#DB_PASSWORD}] characters"
+            echo "JWT_SECRET is set? [${#JWT_SECRET}] characters"
+
+            echo "Creating .env file..."
+            echo "DB_URL=$DB_URL" > /home/ec2-user/your-app/app.env
+            echo "DB_USERNAME=$DB_USERNAME" >> /home/ec2-user/your-app/app.env
+            echo "DB_PASSWORD=$DB_PASSWORD" >> /home/ec2-user/your-app/app.env
+            echo "JWT_SECRET=$JWT_SECRET" >> /home/ec2-user/your-app/app.env
+
+            echo "Starting application..."
+            cd /home/ec2-user/your-app
+            nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+
+            sleep 10
+            echo "Last 10 lines of app.log:"
+            tail -n 10 app.log
