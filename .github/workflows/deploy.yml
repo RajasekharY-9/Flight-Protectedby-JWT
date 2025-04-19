@@ -26,9 +26,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Build the app
-        run: |
-          mvn clean install -DskipTests
+      - name: Build with Maven
+        run: mvn clean install -DskipTests
+        working-directory: Flight
 
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@v0.1.4
