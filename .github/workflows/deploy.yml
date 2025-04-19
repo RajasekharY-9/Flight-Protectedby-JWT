@@ -49,7 +49,7 @@ jobs:
           script: |
             echo "Installing Java 21 if not already installed..."
             sudo yum install java-21-amazon-corretto -y || true
-            cd /home/ec2-user/your-app
+            cd /home/ec2-user/your-app/Flight/target
             java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 & disown
 
             echo "Application started. Logs:"
