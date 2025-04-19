@@ -59,6 +59,7 @@ jobs:
             cd /home/ec2-user/your-app
             nohup env $(cat app.env | xargs) java -jar Flight-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
             echo "App started. Logs at /home/ec2-user/your-app/app.log"
+            exit 0
         env:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
