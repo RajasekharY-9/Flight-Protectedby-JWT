@@ -38,7 +38,7 @@ jobs:
           target: "/home/ec2-user/your-app/"
           overwrite: true
 
-      # Step 5: SSH into EC2 and run the app with environment variables from secrets.env
+      # Step 5: SSH into EC2 and run the app with environment variables
       - name: SSH and Run App on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -53,16 +53,12 @@ jobs:
             echo "Killing any existing Java processes..."
             pkill -f 'java -jar' || true
 
-            echo "Creating .env file from config/secrets.env..."
-            # Read values from config/secrets.env and set them as environment variables
-            export $(cat /home/ec2-user/your-app/config/secrets.env | xargs)
-
-            # Now create the .env file for the application
+            echo "Creating .env file from secrets..."
             cat <<EOF > /home/ec2-user/your-app/app.env
-            DB_URL=${DB_URL}
-            DB_USERNAME=${DB_USERNAME}
-            DB_PASSWORD=${DB_PASSWORD}
-            JWT_SECRET=${JWT_SECRET}
+            DB_URL=jdbc:mysql://database-1.c1qo64om6frw.ap-south-1.rds.amazonaws.com:3306/flightdb?createDatabaseIfNotExist=true
+            DB_USERNAME=root
+            DB_PASSWORD=9398434528
+            JWT_SECRET=AZeBLi+QshUG5goEFFAMMcBmXq9fuIy4e8wrkpiGhQ8=
             EOF
 
             echo "Starting application..."
