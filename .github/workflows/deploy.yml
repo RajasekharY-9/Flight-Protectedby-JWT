@@ -52,9 +52,10 @@ jobs:
             echo "Killing any running Java processes..."
             pkill -f 'java -jar' || true
             echo "Running app with environment variables..."
-            export DB_URL="${{ secrets.DB_URL }}"
-            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
-            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            export DB_URL="${{ secrets.RDS_URL }}"
+            echo "DB URL " ${DB_URL}
+            export DB_USERNAME="${{ secrets.RDS_USERNAME }}"
+            export DB_PASSWORD="${{ secrets.RDS_PASSWORD }}"
             export JWT_SECRET="${{ secrets.JWT_SECRET }}"
             nohup java -jar /home/ec2-user/your-app/app.jar > /home/ec2-user/your-app/app.log 2>&1 &
             echo "App started. Logs at /home/ec2-user/your-app/app.log"
